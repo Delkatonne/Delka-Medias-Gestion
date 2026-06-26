@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/src/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - delka-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: ${PORT}
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRE: ${JWT_EXPIRE}
+      GMAIL_USER: ${GMAIL_USER}
+      GMAIL_PASSWORD: ${GMAIL_PASSWORD}
+      FRONTEND_URL: ${FRONTEND_URL}
+      UPLOAD_DIR: /app/uploads
+    ports:
+      - '${PORT}:${PORT}'
+    depends_on:
+      - db
+    volumes:
+      - backend_uploads:/app/uploads
+    networks:
+      - delka-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      VITE_API_URL: ${API_URL}
+    ports:
+      - '80:80'
+    depends_on:
+      - backend
+    networks:
+      - delka-network
+
+volumes:
+  postgres_data:
+  backend_uploads:
+
+networks:
+  delka-network:
+    driver: bridge

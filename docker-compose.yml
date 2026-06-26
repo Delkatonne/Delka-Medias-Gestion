@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: delka_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: delka_medias
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/src/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - delka-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: delka_backend
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: delka_medias
+      DB_USER: postgres
+      DB_PASSWORD: password
+      JWT_SECRET: your_super_secret_jwt_key_change_this
+      JWT_EXPIRE: 7d
+      GMAIL_USER: ${GMAIL_USER}
+      GMAIL_PASSWORD: ${GMAIL_PASSWORD}
+      FRONTEND_URL: http://localhost:5173
+      UPLOAD_DIR: ./uploads
+    ports:
+      - '5000:5000'
+    depends_on:
+      - db
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/uploads:/app/uploads
+    networks:
+      - delka-network
+    command: npm run dev
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: delka_frontend
+    environment:
+      VITE_API_URL: http://localhost:5000/api
+    ports:
+      - '5173:80'
+    depends_on:
+      - backend
+    networks:
+      - delka-network
+
+volumes:
+  postgres_data:
+
+networks:
+  delka-network:
+    driver: bridge
